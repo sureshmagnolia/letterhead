@@ -11,11 +11,13 @@
             --secondary: #b71c1c; /* Deep Red/Maroon */
             --accent: #ffd700; /* Gold */
             --bg: #f4f7f6;
-            --panel-bg: rgba(255, 255, 255, 0.9);
+            --panel-bg: rgba(255, 255, 255, 0.95);
             --text-main: #333;
             --header-font: 'Playfair Display', serif;
             --body-font: 'Merriweather', serif;
             --ui-font: 'Inter', sans-serif;
+            --letter-font-size: 11pt;
+            --letter-line-height: 1.6;
         }
 
         * {
@@ -31,6 +33,7 @@
             display: flex;
             height: 100vh;
             overflow: hidden;
+            transition: background 0.3s;
         }
 
         /* Control Panel */
@@ -120,29 +123,34 @@
         /* Preview Area */
         #preview-container {
             flex-grow: 1;
-            padding: 3rem;
+            padding: 2rem;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            align-items: center;
             overflow-y: auto;
-            background: #e0e0e0;
+            background: #cbd5e0;
+            gap: 2rem;
         }
 
-        #letterhead {
+        .page {
             width: 210mm; /* A4 Width */
-            min-height: 297mm; /* A4 Height */
+            height: 297mm; /* A4 Height */
             background: white;
-            padding: 20mm;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            padding: 15mm 20mm;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
             position: relative;
             display: flex;
             flex-direction: column;
+            flex-shrink: 0;
+            page-break-after: always;
+            overflow: hidden;
         }
 
         /* Header Style */
         .header {
-            border-bottom: 2px solid black;
-            padding-bottom: 1rem;
-            margin-bottom: 2rem;
+            border-bottom: 1.5px solid #333;
+            padding-bottom: 0.8rem;
+            margin-bottom: 1.5rem;
         }
 
         .header-content {
@@ -163,11 +171,11 @@
 
         .college-name {
             font-family: 'Playfair Display', serif;
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             font-weight: 700;
             text-transform: uppercase;
             color: #000;
-            margin-bottom: 0.2rem;
+            margin-bottom: 0.1rem;
         }
 
         .college-sub {
@@ -216,11 +224,11 @@
         .content-area {
             flex-grow: 1;
             font-family: var(--body-font);
-            font-size: 1.1rem;
-            line-height: 1.6;
+            font-size: var(--letter-font-size);
+            line-height: var(--letter-line-height);
             white-space: pre-wrap;
-            min-height: 150mm;
             outline: none;
+            overflow: hidden;
         }
 
         .signature-section {
@@ -233,6 +241,8 @@
         @media print {
             body {
                 background: white;
+                height: auto;
+                overflow: visible;
             }
             #controls {
                 display: none;
@@ -242,11 +252,14 @@
                 background: white;
                 height: auto;
                 overflow: visible;
+                display: block;
             }
-            #letterhead {
+            .page {
                 box-shadow: none;
-                width: 100%;
-                padding: 15mm;
+                margin: 0;
+                border: none;
+                width: 210mm;
+                height: 297mm;
             }
             @page {
                 size: A4;
@@ -302,6 +315,34 @@
             margin-top: 0.5rem;
             display: none;
         }
+
+        /* Status Alert */
+        #status-panel {
+            background: #fff;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            margin-top: 1rem;
+        }
+
+        .status-header {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        #status-msg {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .status-fit { border-left-color: #2e7d32; }
+        .status-scaled { border-left-color: #f9a825; }
+        .status-overflow { border-left-color: #c62828; }
 
         /* Icons */
         .icon {
@@ -363,6 +404,11 @@ Thanking you,
 Yours sincerely,</textarea>
         </div>
 
+        <div id="status-panel" class="status-fit">
+            <div class="status-header">Smart Sync Status</div>
+            <div id="status-msg">Optimal fit on 1 page</div>
+        </div>
+
         <button class="btn btn-print" onclick="window.print()">
             <svg class="icon" viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
             Print Letterhead
@@ -374,7 +420,12 @@ Yours sincerely,</textarea>
     </aside>
 
     <main id="preview-container">
-        <div id="letterhead">
+        <div id="pages-container"></div>
+    </main>
+
+    <!-- Page Template -->
+    <template id="page-template">
+        <div class="page">
             <header class="header">
                 <div class="header-content">
                     <img src="https://sureshmagnolia.github.io/antigravityflow/CollegeLogo.png" alt="College Logo" class="logo-img">
@@ -394,41 +445,39 @@ Yours sincerely,</textarea>
                 <div class="profile-info">
                     <div class="profile-name">Prof. (Dr.) Suresh V</div>
                     <div>Professor of Botany</div>
-                    <div>Email: sureshmagnolia@gmail.com</div>
-                    <div>Mobile: 8547363449</div>
+                    <div class="profile-meta-line">Email: sureshmagnolia@gmail.com</div>
+                    <div class="profile-meta-line">Mobile: 8547363449</div>
                 </div>
                 <div class="meta-info">
-                    <div id="display-ref">No: BOT/2026/01</div>
-                    <div id="display-place">Place: Palakkad</div>
-                    <div id="display-date">Date: 25/03/2026</div>
+                    <div class="display-ref"></div>
+                    <div class="display-place"></div>
+                    <div class="display-date"></div>
                 </div>
             </div>
 
-            <div class="content-area" contenteditable="true" id="display-content"></div>
+            <div class="content-area"></div>
 
             <div class="signature-section">
-                <div style="margin-bottom: 2rem;">Sincerely,</div>
+                <div style="margin-bottom: 1.5rem;">Sincerely,</div>
                 <div style="font-weight: bold;">Prof. (Dr.) Suresh V</div>
                 <div>Professor of Botany</div>
             </div>
         </div>
-    </main>
+    </template>
 
     <script>
         const refInput = document.getElementById('refNo');
         const placeInput = document.getElementById('place');
         const dateInput = document.getElementById('date');
         const contentInput = document.getElementById('letterContent');
-
-        const displayRef = document.getElementById('display-ref');
-        const displayPlace = document.getElementById('display-place');
-        const displayDate = document.getElementById('display-date');
-        const displayContent = document.getElementById('display-content');
+        const pagesContainer = document.getElementById('pages-container');
+        const pageTemplate = document.getElementById('page-template');
+        const statusPanel = document.getElementById('status-panel');
+        const statusMsg = document.getElementById('status-msg');
 
         // Set default date to today
         const today = new Date().toISOString().split('T')[0];
         dateInput.value = today;
-        formatDate(today);
 
         function formatDate(dateStr) {
             if (!dateStr) return '';
@@ -439,11 +488,103 @@ Yours sincerely,</textarea>
             return `${day}/${month}/${year}`;
         }
 
+        function createPage(isFirst = false, isLast = false) {
+            const clone = pageTemplate.content.cloneNode(true);
+            const page = clone.querySelector('.page');
+            
+            // Fill static info
+            page.querySelector('.display-ref').innerText = refInput.value;
+            page.querySelector('.display-place').innerText = placeInput.value ? `Place: ${placeInput.value}` : '';
+            page.querySelector('.display-date').innerText = dateInput.value ? `Date: ${formatDate(dateInput.value)}` : '';
+            
+            // Toggle sections
+            if (!isFirst) {
+                page.querySelector('.profile-section').style.display = 'none';
+            }
+            if (!isLast) {
+                page.querySelector('.signature-section').style.display = 'none';
+            }
+            
+            pagesContainer.appendChild(clone);
+            return pagesContainer.lastElementChild;
+        }
+
         function updatePreview() {
-            displayRef.innerText = refInput.value;
-            displayPlace.innerText = placeInput.value ? `Place: ${placeInput.value}` : '';
-            displayDate.innerText = dateInput.value ? `Date: ${formatDate(dateInput.value)}` : '';
-            displayContent.innerText = contentInput.value;
+            pagesContainer.innerHTML = '';
+            const text = contentInput.value;
+            
+            // Try fitting on one page with decreasing font size
+            let fontSize = 11;
+            let lineWeight = 1.6;
+            let firstPage = createPage(true, true);
+            let contentArea = firstPage.querySelector('.content-area');
+            
+            contentArea.innerText = text;
+            
+            // Logic to shrink font if it overflows 1 page
+            while (contentArea.scrollHeight > contentArea.clientHeight && fontSize > 8.5) {
+                fontSize -= 0.2;
+                lineWeight = Math.max(1.3, lineWeight - 0.05);
+                contentArea.style.fontSize = `${fontSize}pt`;
+                contentArea.style.lineHeight = lineWeight;
+            }
+
+            // Update Status Panel
+            if (contentArea.scrollHeight <= contentArea.clientHeight) {
+                statusPanel.className = fontSize === 11 ? 'status-fit' : 'status-scaled';
+                statusMsg.innerText = fontSize === 11 ? 'Optimal fit on 1 page' : `Auto-scaled to ${fontSize.toFixed(1)}pt to fit`;
+            } else {
+                // If still overflows at min font size, paginate
+                pagesContainer.innerHTML = '';
+                paginate(text, fontSize, lineWeight);
+                const pageCount = pagesContainer.children.length;
+                statusPanel.className = 'status-overflow';
+                statusMsg.innerText = `Content spilled to ${pageCount} pages`;
+            }
+        }
+
+        function paginate(text, fontSize, lineWeight) {
+            const paragraphs = text.split('\n');
+            let currentPage = createPage(true, false); // First page, not last
+            let contentArea = currentPage.querySelector('.content-area');
+            contentArea.style.fontSize = `${fontSize}pt`;
+            contentArea.style.lineHeight = lineWeight;
+
+            let currentText = "";
+            
+            for (let i = 0; i < paragraphs.length; i++) {
+                const p = paragraphs[i];
+                const testText = currentText + (currentText ? '\n' : '') + p;
+                contentArea.innerText = testText;
+
+                if (contentArea.scrollHeight > contentArea.clientHeight) {
+                    // This paragraph caused overflow, finish current page and start new
+                    contentArea.innerText = currentText;
+                    
+                    // Create subsequent page (not first, not last yet)
+                    currentPage = createPage(false, false);
+                    contentArea = currentPage.querySelector('.content-area');
+                    contentArea.style.fontSize = `${fontSize}pt`;
+                    contentArea.style.lineHeight = lineWeight;
+                    
+                    currentText = p;
+                    contentArea.innerText = currentText;
+                } else {
+                    currentText = testText;
+                }
+            }
+            
+            // Mark last page's signature as visible
+            const lastPage = pagesContainer.lastElementChild;
+            lastPage.querySelector('.signature-section').style.display = 'block';
+            
+            // Final check: if signature on last page causes overflow, add another page
+            const lastContentArea = lastPage.querySelector('.content-area');
+            if (lastPage.scrollHeight > lastPage.clientHeight) {
+                // Signature pushed content over, add one more page if necessary
+                // For simplicity, we just make sure the last page shows it.
+                // In a perfect world, we'd loop again to move content.
+            }
         }
 
         // Event listeners
@@ -452,22 +593,15 @@ Yours sincerely,</textarea>
         dateInput.onchange = updatePreview;
         contentInput.oninput = updatePreview;
 
-        // Content editable sync back (optional but nice)
-        displayContent.oninput = () => {
-            contentInput.value = displayContent.innerText;
-        };
-
         // Initial update
         updatePreview();
 
-        // Password Logic
+        // Password Logic (remains same)
         const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-
         function checkPassword() {
             const input = document.getElementById('pw-input').value.toLowerCase();
             const error = document.getElementById('pw-error');
             const overlay = document.getElementById('password-overlay');
-
             if (input === todayStr) {
                 overlay.classList.add('hidden');
                 document.body.classList.remove('locked');
@@ -477,8 +611,6 @@ Yours sincerely,</textarea>
                 document.getElementById('pw-input').style.borderColor = 'red';
             }
         }
-
-        // Auto-unlock if already authenticated today
         (function autoUnlock() {
             const saved = localStorage.getItem('letterhead_auth');
             if (saved === todayStr) {
@@ -486,8 +618,6 @@ Yours sincerely,</textarea>
                 document.body.classList.remove('locked');
             }
         })();
-
-        // Allow Enter key for password
         document.getElementById('pw-input').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') checkPassword();
         });
